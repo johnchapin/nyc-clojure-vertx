@@ -23,112 +23,134 @@ class: center, middle
 
 # Vert.x / Clojure
 
-NYC Clojure Meetup, July 2014
+### NYC Clojure Meetup, July 2014
 
 @johnchapin
 
 ---
 
-- Vert.x elevator pitch
- - Lightweight
- - Platform for microservices
- - Polyglot language support
- - Actor-like concurrency
+## Vert.x elevator pitch
+### Lightweight
+### Platform for microservices
+### Polyglot language support
+### Actor-like concurrency
 
 ---
 
-- Vert.x "instance"
- - JVM per instance
- - Event loop (thread) per core
- - Many verticles per event loop
+## Language support
+
+- Clojure
+- Groovy
+- Java
+- Javascript
+- Python
+- Ruby
+- Scala
 
 ---
 
-- Verticles
- - Fundamental unit of execution
- - "Single threaded"
- - No blocking!
- - Worker verticles for blocking
- - Horizontal scaling
+## Vert.x "instance"
+### JVM per instance
+### Event loop (thread) per core
+### Many verticles per event loop
 
 ---
 
-- Modules
- - Deployable/resolvable (Maven)
- - Compose multiple verticles, dependencies, other modules
- - Startup, Configuration
+## Verticles
+### Fundamental unit of execution
+### "Single threaded"
+###  No blocking!
+### Worker verticles for blocking
+### Horizontal scaling
 
 ---
 
-- Scaling
- - Horizontal, spin up more verticles or modules
-
-- High Availability
- - Requires a cluster
- - Per-module
- - Failover triggered by unclean instance termination
- - HA modules are re-started on live cluster node
- - HA groups
+## Modules
+### Deployable/resolvable (Maven)
+### Compose multiple verticles, dependencies, other modules
+### Startup, Configuration
 
 ---
 
-- Event bus messaging
- - Handlers registered to addresses
- - Point to point
-  - Round-robin to registered handlers
- - Pub/sub
-  - All registered handlers
- - Request/response
+## High Availability
+### Requires a cluster
+### Per-module
+### Failover triggered by unclean instance termination
+### HA modules are re-started on live cluster node
+### HA groups
 
 ---
 
-- Shared data
- - Shared per Vert.x instance (not to cluster)
- - Immutable (yay!)
- - Maps
- - Sets
+## Event bus messaging
+### Handlers registered to addresses
+### Point to point
+- Round-robin to registered handlers
+
+### Pub/sub
+- All registered handlers
+
+### Request/response
+- Send, reply, reply, reply...
 
 ---
 
-- Core API
- - Event bus and shared data
- - Network servers and clients (Netty - TCP, UDP, HTTP, Websockets)
- - Timers
- - Buffers
- - File system access
- - Configuration
+## Shared data
+### Shared per Vert.x instance (not to cluster)
+### Immutable (yay!)
+### Maps
+### Sets
 
 ---
 
-- Clojure Support
- - Officially supported as of Vert.x 2.1
- - ~1 year old
+## Core API
+### Event bus and shared data
+### Network servers and clients
+- (Netty - TCP, UDP, HTTP, Websockets)
 
-- Tooling/libraries
- - lein-vertx
- - ring-vertx-adapter
+### Timers
+### Buffers
+### File system access
+### Configuration
 
 ---
 
-[Vert.x Homepage](http://vertx.io)
+## Clojure Support
+### Officially supported as of Vert.x 2.1
+### ~1 year old
 
-[mod-lang-clojure](https://github.com/vert-x/mod-lang-clojure)
+## Tooling/libraries
+### lein-vertx
+### ring-vertx-adapter
+
+---
+
+### [Vert.x Homepage](http://vertx.io)
+
+### [mod-lang-clojure](https://github.com/vert-x/mod-lang-clojure)
+
+### [Toby Crawley, Developing Asynchronous Polyglot Applications with vert.x](http://youtu.be/MXrNAXGOSOg)
 
 [lein-vertx](https://github.com/isaiah/lein-vertx)
 
 [ring-vertx-adapter](https://github.com/stream1984/ring-vertx-adapter)
 
-[Toby Crawley, Developing Asynchronous Polyglot Applications with vert.x](http://youtu.be/MXrNAXGOSOg)
-
 ---
 
-Example application
+## vertx-chat
 
-Group chat
+### Core
+- Loads config and other verticles
 
-- Interface verticle (web)
-- Logging/history verticle
-- Timestamping verticle
+### Logger
+- Stores messages
+- Responds to history requests
+
+### Timestamper
+- Emits timestamp messages
+
+### Web
+- Serves html/js/css
+- Bridges eventbus to client
 
 ---
 

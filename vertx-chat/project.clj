@@ -8,7 +8,7 @@
                  ;;  that works with mod-lang-clojure 1.0.2
                  [org.clojure/clojurescript "0.0-2156"]
                  [reagent "0.4.0"]]
-  :source-paths ["src/clj"]
+  :source-paths ["src/clj" "resources"]
   :cljsbuild {:builds
               [{:source-paths ["src/cljs"]
                 :compiler {:output-to "resources/client.js"
