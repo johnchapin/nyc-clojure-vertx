@@ -1,0 +1,11 @@
+input#user {
+  width: 100px;
+}
+
+input#message {
+  width: 500px;
+}
+
+textarea#messages {
+  width: 600px;
+}
