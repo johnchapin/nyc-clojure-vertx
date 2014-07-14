@@ -27,6 +27,14 @@ class: center, middle
 
 @johnchapin
 
+???
+
+Poll the audience:
+
+- Who has heard of Vert.x before this meetup?
+- Who uses Vert.x in any capacity? At work?
+- Who saw Toby Crawley's talk at last year's conj or on Youtube?
+
 ---
 
 ## Vert.x elevator pitch
@@ -34,6 +42,10 @@ class: center, middle
 ### Platform for microservices
 ### Polyglot language support
 ### Actor-like concurrency
+
+???
+
+Node.js, hey, I heard you like callbacks in your callbacks
 
 ---
 
@@ -54,6 +66,10 @@ class: center, middle
 ### Event loop (thread) per core
 ### Many verticles per event loop
 
+???
+
+All Clojure verticles deployed in a single vert.x instance share the same Clojure runtime, so you can use the Clojure's existing mechanisms for concurrent coordination
+
 ---
 
 ## Verticles
@@ -66,7 +82,7 @@ class: center, middle
 ---
 
 ## Modules
-### Deployable/resolvable (Maven)
+### Deployable/resolvable (Maven, Bintray)
 ### Compose multiple verticles, dependencies, other modules
 ### Startup, Configuration
 
@@ -79,15 +95,20 @@ class: center, middle
 ### HA modules are re-started on live cluster node
 ### HA groups
 
+???
+
+HA groups will ensure modules aren't revived on a Vert.x instance that doesn't
+have necessary dependencies
+
 ---
 
 ## Event bus messaging
+### Transient messages, primitives, JSON
 ### Handlers registered to addresses
 ### Point to point
 - Round-robin to registered handlers
 
 ### Pub/sub
-- All registered handlers
 
 ### Request/response
 - Send, reply, reply, reply...
@@ -122,6 +143,159 @@ class: center, middle
 ### lein-vertx
 ### ring-vertx-adapter
 
+## core.async?
+
+???
+
+lein-vertx still very raw
+
+ring-vertx-adapter is essentially synchronous, especially when combined with compojure
+
+core.async mentioned in Toby's talk, but no built-in support (yet).
+
+I've experimented with core.async in single verticles, but haven't resolved
+issues when deploying multiple instances of the same verticle.
+
+core.async reply/response needs to hold on to the message context
+
+---
+
+## vertx-chat
+
+### Core
+
+### Logger
+
+### Timestamper
+
+### Web
+
+---
+
+## vertx-chat.core
+
+```clojure
+(ns vertx-chat.core
+  (:require [vertx.core]))
+
+(defn init []
+  ;; Start other verticles
+  (vertx.core/deploy-verticle "vertx_chat/logger.clj")
+  (vertx.core/deploy-verticle "vertx_chat/timestamper.clj")
+  (vertx.core/deploy-verticle "vertx_chat/web.clj"))
+```
+
+---
+
+## vertx-chat.logger
+
+```clojure
+(ns vertx-chat.logger
+  (:require [vertx-chat.logger.impl :refer [log-handler history-handler]]
+            [vertx.eventbus :as eb]))
+
+(eb/on-message "chat" log-handler)
+(eb/on-message "history" history-handler)
+```
+
+```clojure
+(ns vertx-chat.logger.impl
+  (:require [vertx.eventbus :as eb]
+            [vertx.logging :as log]))
+
+(def history (atom []))
+
+(defn log-handler [m]
+  (log/info m)
+  (swap! history conj m))
+
+(defn history-handler [m]
+  (when (number? m)
+    (eb/reply (take-last m @history))))
+```
+
+---
+
+## vertx-chat.timestamper
+
+```clojure
+(ns vertx-chat.timestamper
+  (:import [java.util Date])
+  (:require [vertx.core]
+            [vertx.eventbus :as eb]))
+
+(vertx.core/periodic (* 1000 60 1)
+  (eb/publish "chat" {:user "Timestamp" :message (str (Date.))}))
+```
+
+---
+
+## vertx-chat.web
+
+```clojure
+(ns vertx-chat.web
+  (:require [vertx.http :as http]
+            [vertx.http.route :as route]
+            [vertx.http.sockjs :as sockjs]))
+
+(defn serve-file [req]
+  (-> (http/server-response req)
+      (http/send-file ,,, (-> (http/params req) :file))))
+
+(let [http-server (http/server)]
+
+  (http/on-request
+    http-server
+    (route/get "/:file" serve-file))
+
+  (sockjs/bridge
+    (sockjs/sockjs-server http-server)
+    {:prefix "/eventbus"}
+    [{:address "chat"}           ;; client -> eventbus
+     {:address "history"}]
+    [{:address "chat"}           ;; eventbus -> client
+     {:address "history"}])
+
+  (http/listen http-server 8080 "localhost"))
+```
+
+---
+
+## vertx-chat/logger-test
+
+```clojure
+(ns vertx-chat.logger-test
+  (:require [vertx-chat.logger.impl :as logger]
+            [vertx.eventbus :as eb]
+            [vertx.testtools]
+            [clojure.test :refer [deftest is use-fixtures]]))
+
+(use-fixtures :each vertx.testtools/as-embedded)
+
+(deftest test-history-handler
+  (let [expected ["foo" "bar"]]
+    ;; Fixture data
+    (reset! logger/history expected)
+
+    ;; Register handler
+    (eb/on-message "history" logger/history-handler)
+
+    ;; Send message to handler under test
+    (eb/send "history" 2 (fn [r]
+                           (vertx.testtools/test-complete
+                             (is (= expected r)))))))
+```
+
+???
+
+### Embedded Vert.x instance
+- Set up handlers/etc in deftest
+
+### Watch out!
+- Can't load "bare" verticles
+- Split handler registration, implementation
+- Multiple tests in ns broken
+
 ---
 
 ### [Vert.x Homepage](http://vertx.io)
@@ -134,185 +308,11 @@ class: center, middle
 
 [ring-vertx-adapter](https://github.com/stream1984/ring-vertx-adapter)
 
----
-
-## vertx-chat
-
-### Core
-- Loads config and other verticles
-
-### Logger
-- Stores messages
-- Responds to history requests
-
-### Timestamper
-- Emits timestamp messages
-
-### Web
-- Serves html/js/css
-- Bridges eventbus to client
+### http://johnchapin.boostrot.net/nyc-clojure-vertx/
 
 ---
 
-Backup slides
-
----
-
-## What is Vert.x?
-
-Vert.x is a lightweight, high performance, **polyglot** application platform.
-
-## Key Concepts
-
-### Verticles &amp; Modules
-
-Verticles are the most basic unit of a Vert.x application, and are the building blocks of Vert.x modules. Modules are resolvable and deployable units composed of other modules and verticles.
-
-### Event bus
-
-The Vert.x event bus is a distributed peer-to-peer messaging system allowing verticles to communicate with each other.
-
----
-
-## Wait... Polyglot?
-
-Vert.x 2.1 supports the following languages:
-
-- Clojure
-- Groovy
-- Java
-- Javascript
-- Python
-- Ruby
-- Scala
-
----
-
-## Let's dive right in...
-
-Vert.x instance = JVM instance
-
-Vert.x instances can be clustered on the same host and across a network
-
-Verticles run in a managed thread pool (# of available cores)
-
-Verticles are never executed by more than one thread concurrently
-
-Blocking your verticle will block other verticles
-
----
-
-## The Eventbus
-
-### Backed by Hazelcast - "The Leading Open Source In-Memory Data Grid"
-- Distributed Java data structures and concurrency tools
-- Dynamic discovery / scaling / partitioning / fail-over
-
-- TODO: Call me maybe?
-
----
-
-## Eventbus Messaging
-
-### Addressing
-- Addresses are strings.
-- Handlers are registered for addresses.
-
-### Topologies
-- Pub/sub - all handlers receive the message
-- Point to point - one handler receives the message
- - Round-robin "load balancing"
- - Request/response with handlers
-
-### Messages
-- Transient!
-- Primitive types, Strings, JSON
-
----
-
-##
-
----
-
-## Basic verticle
-
-```clojure
-(ns net.boostrot.vertx.examples.basic
-  (:require [vertx.embed :as vertx]
-            [vertx.eventbus :as eb]))
-
-; Embedded vertx (vs. running on cmd line)
-(vertx/set-vertx! (vertx/vertx))
-
-; Event bus address
-(def address "examples.basic")
-
-; Message handler
-(eb/on-message
-  address
-  (fn [msg]
-    (println "Received message:" msg)
-    (eb/reply :pong)))
-
-; Message sender
-(defn ping []
-  (eb/send address :ping #(println "Received reply:" %)))
-```
-
----
-
-## Testing!
-### vertx.testtools
-
-```clojure
-(ns net.boostrot.vertx.examples.test
-  (:require [clojure.test :refer :all]
-            [vertx.eventbus :as eb]
-            [vertx.testtools :as tt]))
-
-(clojure.test/use-fixtures :each tt/as-embedded)
-
-(deftest foo
-  (eb/on-message "address"
-    (fn [m]
-      (tt/test-complete
-        (is (= m {:foo "bar"})))))
-  (eb/send "address" {:foo :bar}))
-```
-
----
-
-## Testing...
-
-```clojure
-(ns net.boostrot.vertx.examples.test
-  (:require [clojure.test :refer :all]
-            [vertx.eventbus :as eb]
-            [vertx.testtools :as tt]))
-
-(clojure.test/use-fixtures :each tt/as-embedded)
-
-; (binding [*embedded-latch* (CountDownLatch. 1)
-;           core/*vertx* (vertx.embed/vertx)]
-;   (try
-      (deftest foo
-        (eb/on-message "address"
-          (fn [m]
-            (tt/test-complete
-              (is (= m {:foo "bar"}))
-;               (.countdown *embedded-latch*)
-              )))
-        (eb/send "address" {:foo :bar}))
-;     (finally
-;       (if (.await *embedded-latch* timeout)
-;         (.stop vertx.core/*vertx*)
-;         (throw (Exception. "Timed out..."))))))
-```
-
-## Testing gotchas
-
-
-
+# Questions?
 
     </textarea>
     <script src="remark-latest.min.js" type="text/javascript"></script>

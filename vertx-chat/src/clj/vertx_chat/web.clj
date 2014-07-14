@@ -1,15 +1,11 @@
 (ns vertx-chat.web
-  (:require [vertx.filesystem :as fs]
-            [vertx.http :as http]
+  (:require [vertx.http :as http]
             [vertx.http.route :as route]
-            [vertx.http.sockjs :as sockjs]
-            ))
+            [vertx.http.sockjs :as sockjs]))
 
 (defn serve-file [req]
-  (if-let [file (or (-> req http/params :file)
-                    "/index.html")]
-    (-> req http/server-response (http/send-file ,,, file))
-    (-> req http/server-response (http/end ,,, "file-not-found"))))
+  (-> (http/server-response req)
+      (http/send-file ,,, (-> (http/params req) :file))))
 
 (let [http-server (http/server)]
 
@@ -20,7 +16,9 @@
   (sockjs/bridge
     (sockjs/sockjs-server http-server)
     {:prefix "/eventbus"}
-    [{}]
-    [{}])
+    [{:address "chat"}           ;; client -> eventbus
+     {:address "history"}]
+    [{:address "chat"}           ;; eventbus -> client
+     {:address "history"}])
 
   (http/listen http-server 8080 "localhost"))
