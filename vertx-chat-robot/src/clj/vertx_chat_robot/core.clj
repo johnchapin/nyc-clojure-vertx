@@ -29,4 +29,5 @@
 
 (defn init []
   (let [robot-name (format "Robo%d" (swap! robot-count inc))]
+    (log/info "Initializing " robot-name)
     (eb/on-message "chat" (partial message-handler robot-name))))
